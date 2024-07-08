@@ -26,6 +26,8 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     if (!user) {
       throw new UnauthorizedException();
     }
+    // check and update tokens and subscription,Incase expired
+    await this.authService.sync(user);
     return user;
   }
 }
