@@ -2,7 +2,6 @@ import { Module } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { AuthController } from './auth.controller';
 import { PassportModule } from '@nestjs/passport';
-import { EmailModule } from '../email/email.module';
 import { UserModule } from '../user/user.module';
 import { JwtModule } from '@nestjs/jwt';
 import { ConfigModule, ConfigService } from '@nestjs/config';
@@ -12,7 +11,6 @@ import { OutlookModule } from '../outlook/outlook.module';
 @Module({
   imports: [
     PassportModule,
-    EmailModule,
     UserModule,
     OutlookModule,
     JwtModule.registerAsync({
