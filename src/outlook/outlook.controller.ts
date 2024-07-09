@@ -20,17 +20,13 @@ export class OutlookController {
   @HttpCode(200)
   async handleWebhook(
     @Body() notification: any,
-    @Res() res,
     @Query('validationToken') validationToken: string,
     @Param('userId') userId: string,
   ) {
-    // Handle the webhook notification
     if (validationToken) {
-      res.set('Content-Type', 'text/plain');
-      res.status(200).send(validationToken);
+      return validationToken;
     }
-    // await this.outlookService.handleNotification(notification, userId);
     await this.outlookService.addWebhookJob(userId, notification);
-    return res.status(200).send();
+    return { status: 'success' };
   }
 }

@@ -15,7 +15,6 @@ export class DatabaseOperationService {
       const indexExists = await this.elasticsearchService.indices.exists({
         index,
       });
-      console.log(indexExists);
       if (!indexExists) {
         const response = await this.elasticsearchService.indices.create({
           index,
