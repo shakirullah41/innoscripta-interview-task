@@ -11,13 +11,16 @@ import { ApiTags } from '@nestjs/swagger';
 export class MailboxController {
   constructor(private mailboxService: MailboxService) {}
 
-  @Get('/:provider')
-  getMailBoxFolders(@GetUser() user: User, @Param() provider: ProviderEnum) {
-    return this.mailboxService.getMailBoxFolders(user.id, provider);
-  }
-
   @Get('/mails')
   getAll(@Query() getMailDto: GetMailDto, @GetUser() user: User) {
+    console.log(getMailDto);
     return this.mailboxService.getMails(user.id, getMailDto);
+  }
+  @Get('/:provider')
+  getMailBoxFolders(
+    @GetUser() user: User,
+    @Param('provider') provider: ProviderEnum,
+  ) {
+    return this.mailboxService.getMailBoxFolders(user.id, provider);
   }
 }

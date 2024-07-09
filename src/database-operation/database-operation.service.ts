@@ -1,4 +1,8 @@
-import { Injectable, InternalServerErrorException } from '@nestjs/common';
+import {
+  Injectable,
+  InternalServerErrorException,
+  NotFoundException,
+} from '@nestjs/common';
 import { ElasticsearchService } from '@nestjs/elasticsearch';
 import { User } from '../user/user.entity';
 import { SearchDto } from './dto/search.dto';
@@ -18,8 +22,11 @@ export class DatabaseOperationService {
         });
         return response;
       }
-    } catch (error) {
-      throw new InternalServerErrorException(error);
+    } catch (e) {
+      console.log(e);
+      throw new InternalServerErrorException({
+        error: 'Something went wrong, please try again later.',
+      });
     }
   }
   async upsert(index: string, id: string, body: any): Promise<any> {
@@ -32,8 +39,11 @@ export class DatabaseOperationService {
         refresh: true,
       });
       return response;
-    } catch (error) {
-      throw new InternalServerErrorException(error);
+    } catch (e) {
+      console.log(e);
+      throw new InternalServerErrorException({
+        error: 'Something went wrong, please try again later.',
+      });
     }
   }
 
@@ -47,8 +57,11 @@ export class DatabaseOperationService {
         refresh: true,
       });
       return response;
-    } catch (error) {
-      throw new InternalServerErrorException(error);
+    } catch (e) {
+      console.log(e);
+      throw new InternalServerErrorException({
+        error: 'Something went wrong, please try again later.',
+      });
     }
   }
 
@@ -64,31 +77,62 @@ export class DatabaseOperationService {
         refresh: true,
       });
       return response;
-    } catch (error) {
-      throw new InternalServerErrorException(error);
+    } catch (e) {
+      console.log(e);
+      throw new InternalServerErrorException({
+        error: 'Something went wrong, please try again later.',
+      });
     }
   }
 
+  // async bulkInsert(index: string, data: any[], userId: string): Promise<any> {
+  //   try {
+  //     if (data.length) {
+  //       await this.createIndex(index); // Ensure index exists
+  //       const bulkOps = data.flatMap((doc) => [
+  //         { index: { _index: index } },
+  //         { ...doc, userId },
+  //       ]);
+  //       const response = await this.elasticsearchService.bulk({
+  //         refresh: true,
+  //         body: bulkOps,
+  //       });
+  //       if (response.errors) {
+  //         throw new InternalServerErrorException('Bulk insert had errors');
+  //       }
+  //       return response;
+  //     }
+  //     return null;
+  //   } catch (error) {
+  //     throw new InternalServerErrorException(error);
+  //   }
+  // }
   async bulkInsert(index: string, data: any[], userId: string): Promise<any> {
     try {
       if (data.length) {
         await this.createIndex(index); // Ensure index exists
         const bulkOps = data.flatMap((doc) => [
-          { index: { _index: index } },
-          { ...doc, userId },
+          { update: { _index: index, _id: doc.id } },
+          { doc: { ...doc, userId }, doc_as_upsert: true },
         ]);
+
         const response = await this.elasticsearchService.bulk({
           refresh: true,
           body: bulkOps,
         });
+
         if (response.errors) {
           throw new InternalServerErrorException('Bulk insert had errors');
         }
+
         return response;
       }
       return null;
-    } catch (error) {
-      throw new InternalServerErrorException(error);
+    } catch (e) {
+      console.log(e);
+      throw new InternalServerErrorException({
+        error: 'Something went wrong, please try again later.',
+      });
     }
   }
 
@@ -103,8 +147,11 @@ export class DatabaseOperationService {
       });
       const hits = response.hits.hits;
       return hits.map((hit) => hit._source);
-    } catch (error) {
-      throw new InternalServerErrorException(error);
+    } catch (e) {
+      console.log(e);
+      throw new InternalServerErrorException({
+        error: 'Something went wrong, please try again later.',
+      });
     }
   }
   async searchAndPaginate(
@@ -140,7 +187,7 @@ export class DatabaseOperationService {
       const results = hits.map((hit) => hit._source);
 
       const countResponse = await this.elasticsearchService.count({
-        index: `outlook_messages_${userId}`,
+        index,
         body: {
           query,
         },
@@ -154,8 +201,19 @@ export class DatabaseOperationService {
         page,
         pageSize,
       };
-    } catch (error) {
-      throw new InternalServerErrorException(error.message);
+    } catch (e) {
+      if (
+        e.meta &&
+        e.meta.body &&
+        e.meta.body.error &&
+        e.meta.body.error.type === 'index_not_found_exception'
+      ) {
+        throw new NotFoundException(`No data found`);
+      }
+      console.log(e);
+      throw new InternalServerErrorException({
+        error: 'Something went wrong, please try again later.',
+      });
     }
   }
   async delete(index, id): Promise<void> {
@@ -164,8 +222,11 @@ export class DatabaseOperationService {
         index,
         id,
       });
-    } catch (error) {
-      throw new InternalServerErrorException(error);
+    } catch (e) {
+      console.log(e);
+      throw new InternalServerErrorException({
+        error: 'Something went wrong, please try again later.',
+      });
     }
   }
 
@@ -180,8 +241,11 @@ export class DatabaseOperationService {
         return result._source;
       }
       return null;
-    } catch (error) {
-      throw new InternalServerErrorException(error);
+    } catch (e) {
+      console.log(e);
+      throw new InternalServerErrorException({
+        error: 'Something went wrong, please try again later.',
+      });
     }
   }
 }

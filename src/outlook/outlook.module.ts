@@ -6,6 +6,8 @@ import { UserModule } from '../user/user.module';
 import { OutlookController } from './outlook.controller';
 import { BullModule } from '@nestjs/bull';
 import { ConfigModule, ConfigService } from '@nestjs/config';
+import { EmailSyncProcessor } from './queues/email-sync.queue';
+import { WebhookProcessor } from './queues/webhook.queue';
 
 @Module({
   imports: [
@@ -28,7 +30,12 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
       name: 'webhook-notifications',
     }),
   ],
-  providers: [OutlookService, OauthStrategy],
+  providers: [
+    OutlookService,
+    OauthStrategy,
+    EmailSyncProcessor,
+    WebhookProcessor,
+  ],
   exports: [OutlookService],
   controllers: [OutlookController],
 })

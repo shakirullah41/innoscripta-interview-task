@@ -48,7 +48,7 @@ export class MailboxService {
     if (folderId) {
       filters.filter.push({ term: { folderId } });
     }
-    const index = `${provider}_messages_${userId}`;
+    const index = `${provider}_messages_${userId}_s`;
     const searchDto: SearchDto = {
       page,
       pageSize,
@@ -56,6 +56,7 @@ export class MailboxService {
       sortOrder,
       index,
     };
+    console.log(searchDto);
     return this.databaseOperationService.searchAndPaginate(
       userId,
       searchDto,

@@ -41,16 +41,18 @@ export class GetMailDto {
     type: String,
     format: 'date-time',
   })
+  @IsOptional()
   @IsDateString()
-  startDate: string;
+  startDate?: string;
 
   @ApiProperty({
     description: 'End date for filtering emails',
     type: String,
     format: 'date-time',
   })
+  @IsOptional()
   @IsDateString()
-  endDate: string;
+  endDate?: string;
 
   @ApiPropertyOptional({
     description: 'Importance of the emails to filter by',
@@ -66,7 +68,7 @@ export class GetMailDto {
   })
   @IsOptional()
   @IsEnum(ProviderEnum)
-  provider?: ProviderEnum;
+  provider?: ProviderEnum = ProviderEnum.OUTLOOK;
 
   @ApiPropertyOptional({
     description: 'Field to sort the emails by',
