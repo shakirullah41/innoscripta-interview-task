@@ -13,7 +13,6 @@ export class MailboxController {
 
   @Get('/mails')
   getAll(@Query() getMailDto: GetMailDto, @GetUser() user: User) {
-    console.log(getMailDto);
     return this.mailboxService.getMails(user.id, getMailDto);
   }
   @Get('/:provider')

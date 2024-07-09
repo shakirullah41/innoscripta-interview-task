@@ -1,5 +1,9 @@
 import { PassportStrategy } from '@nestjs/passport';
-import { Injectable, UnauthorizedException } from '@nestjs/common';
+import {
+  Injectable,
+  InternalServerErrorException,
+  UnauthorizedException,
+} from '@nestjs/common';
 import { Strategy } from 'passport-azure-ad-oauth2';
 import { OutlookService } from './outlook.service';
 
@@ -35,7 +39,9 @@ export class OauthStrategy extends PassportStrategy(Strategy, 'azure-ad') {
       return user;
     } catch (error) {
       console.log(error);
-      return error;
+      throw new InternalServerErrorException({
+        error: 'Something went wrong, please try again later.',
+      });
     }
   }
 }

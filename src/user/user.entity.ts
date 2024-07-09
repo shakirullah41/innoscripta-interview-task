@@ -1,7 +1,10 @@
+import { Exclude } from 'class-transformer';
+
 export class User {
   id: string;
   email: string;
-  password: string; // hashed password
+  @Exclude()
+  password?: string; // hashed password
   outlookSynced?: boolean;
   outlookAccessToken?: string;
   outlookRefreshToken?: string;

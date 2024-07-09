@@ -56,7 +56,6 @@ export class MailboxService {
       sortOrder,
       index,
     };
-    console.log(searchDto);
     return this.databaseOperationService.searchAndPaginate(
       userId,
       searchDto,
