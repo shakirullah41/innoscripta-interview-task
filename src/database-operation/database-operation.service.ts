@@ -1,6 +1,7 @@
 import { Injectable, InternalServerErrorException } from '@nestjs/common';
 import { ElasticsearchService } from '@nestjs/elasticsearch';
 import { User } from '../user/user.entity';
+import { SearchDto } from './dto/search.dto';
 
 @Injectable()
 export class DatabaseOperationService {
@@ -106,8 +107,58 @@ export class DatabaseOperationService {
       throw new InternalServerErrorException(error);
     }
   }
+  async searchAndPaginate(
+    userId: string,
+    searchDto: SearchDto,
+    filters,
+  ): Promise<any> {
+    try {
+      const { must, filter, must_not, should } = filters;
+      const { index, page, pageSize, sortOrder, sortBy } = searchDto;
+      const fromIndex = (page - 1) * pageSize;
+
+      const query = {
+        bool: {
+          must: [{ match: { userId } }, ...must],
+          filter,
+          must_not,
+          should,
+        },
+      };
+      const sort: any = [{ [sortBy]: { order: sortOrder } }];
+      const searchResponse = await this.elasticsearchService.search({
+        index,
+        body: {
+          query,
+          from: fromIndex,
+          size: pageSize,
+          sort,
+        },
+      });
+
+      const hits = searchResponse.hits.hits;
+      const results = hits.map((hit) => hit._source);
+
+      const countResponse = await this.elasticsearchService.count({
+        index: `outlook_messages_${userId}`,
+        body: {
+          query,
+        },
+      });
+
+      const count = countResponse.count;
+
+      return {
+        results,
+        count,
+        page,
+        pageSize,
+      };
+    } catch (error) {
+      throw new InternalServerErrorException(error.message);
+    }
+  }
   async delete(index, id): Promise<void> {
-    console.log('============>', index, id);
     try {
       await this.elasticsearchService.delete({
         index,
