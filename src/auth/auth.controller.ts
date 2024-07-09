@@ -16,7 +16,9 @@ import { SignUpDto } from './dto/signup.dto';
 import { AuthService } from './auth.service';
 import { Response } from 'express';
 import { Public } from './decorator/public.decorator';
+import { ApiTags } from '@nestjs/swagger';
 
+@ApiTags('auth')
 @Controller('auth')
 export class AuthController {
   constructor(private authService: AuthService) {}
