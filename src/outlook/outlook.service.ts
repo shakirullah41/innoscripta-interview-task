@@ -1,9 +1,11 @@
-import { Injectable, UnauthorizedException } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import axios from 'axios';
 import { DatabaseOperationService } from '../database-operation/database-operation.service';
 import { UserService } from '../user/user.service';
 import { User } from '../user/user.entity';
+import { InjectQueue } from '@nestjs/bull';
+import { Queue } from 'bull';
 
 @Injectable()
 export class OutlookService {
@@ -12,6 +14,9 @@ export class OutlookService {
     private readonly configService: ConfigService,
     private databaseOperationService: DatabaseOperationService,
     private userService: UserService,
+    @InjectQueue('email-sync') private readonly emailSyncQueue: Queue,
+    @InjectQueue('webhook-notifications')
+    private readonly wenhookNotificationQueue: Queue,
   ) {}
   checkExpiry(expiryDate: Date): boolean {
     if (!expiryDate) {
@@ -34,7 +39,6 @@ export class OutlookService {
       clientID: this.configService.get<string>('AZURE_CLIENT_ID'),
       clientSecret: this.configService.get<string>('AZURE_CLIENT_SECRET'),
       callbackURL: this.configService.get<string>('AZURE_CALLBACK_URL'),
-      //   tenant: '5d12424e-eb5b-4707-9915-503f96d348b1',
       authorizationURL: `https://login.microsoftonline.com/common/oauth2/v2.0/authorize`,
       tokenURL: `https://login.microsoftonline.com/common/oauth2/v2.0/token`,
       scope: [
@@ -50,7 +54,7 @@ export class OutlookService {
     };
   }
   async getUserProfile(accessToken: string): Promise<any> {
-    const graphUrl = 'https://graph.microsoft.com/v1.0/me';
+    const graphUrl = `${this.graphUrl}/me`;
     const response = await axios.get(graphUrl, {
       headers: {
         Authorization: `Bearer ${accessToken}`,
@@ -58,9 +62,14 @@ export class OutlookService {
     });
     return response.data;
   }
-
+  async addSyncJob(userId: string, accessToken: string) {
+    await this.emailSyncQueue.add({ userId, accessToken });
+  }
+  async addWebhookJob(userId: string, notification: string) {
+    await this.wenhookNotificationQueue.add({ userId, notification });
+  }
   async fetchMailBoxDetails(userId: string, accessToken: string): Promise<any> {
-    const graphUrl = 'https://graph.microsoft.com/v1.0/me/mailFolders';
+    const graphUrl = `${this.graphUrl}/me/mailFolders`;
     const response = await axios.get(graphUrl, {
       headers: {
         Authorization: `Bearer ${accessToken}`,
@@ -69,7 +78,7 @@ export class OutlookService {
     const data = response.data.value;
     console.log(data);
     await this.databaseOperationService.bulkInsert(
-      `mailfolders_${userId}`,
+      `outlook_mailfolders_${userId}`,
       data,
       userId,
     ); // error
@@ -105,15 +114,14 @@ export class OutlookService {
         },
       },
     );
-    console.log('=======> refresh token', response.data);
-    const { access_token, refresh_token, expire_in } = response.data;
+    const { access_token, refresh_token } = response.data;
     await this.updateOutlookTokens(userId, access_token, refresh_token);
 
     return access_token;
   }
 
   async fetchAllEmails(userId: string, accessToken: string): Promise<any[]> {
-    let nextLink = `https://graph.microsoft.com/v1.0/me/messages`;
+    let nextLink = `https://graph.microsoft.com/v1.0/me/messages?$top=100`;
 
     while (nextLink) {
       const response = await axios.get(nextLink, {
@@ -157,10 +165,9 @@ export class OutlookService {
         await this.subscribeToMailboxChanges(id, accessToken);
       }
       if (!outlookSynced) {
-        await this.fetchAllEmails(id, accessToken);
+        await this.addSyncJob(id, accessToken);
+        await this.fetchMailBoxDetails(id, accessToken);
       }
-      await this.fetchMailBoxDetails(id, accessToken);
-      console.log('called');
     } catch (e) {
       console.log(e);
     }
@@ -180,7 +187,7 @@ export class OutlookService {
       outlookAccessToken: accessToken,
       outlookRefreshToken: refreshToken,
       outlookAccessTokenExpiry: new Date(Date.now() + 3600 * 1000), // 1 hour
-      outlookRefreshTokenExpiry: new Date(Date.now() + 24 * 3600 * 1000), // 24 hours
+      outlookRefreshTokenExpiry: new Date(Date.now() + 90 * 24 * 3600 * 1000), // 90 days
     };
 
     await this.databaseOperationService.update('users', userId, outlookTokens);
@@ -211,15 +218,13 @@ export class OutlookService {
     });
     return subscription;
   }
-  async handleNotification(notification: any, userId: string) {
+  async handleNotification(userId: string, notification: any) {
     const { value: notifications } = notification;
-    console.log(notification);
     for (const notif of notifications) {
       const { clientState, resourceData, changeType } = notif;
       if (clientState !== this.configService.get<string>('WEBHOOK_SECRET')) {
         // Invalid client state, ignore the notification
-        throw new UnauthorizedException();
-        break;
+        continue;
       }
       const { outlookAccessToken } = await this.userService.findById(userId);
       // Fetch detailed message data
